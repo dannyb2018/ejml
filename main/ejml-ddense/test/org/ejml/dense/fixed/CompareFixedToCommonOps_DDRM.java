@@ -33,6 +33,7 @@ import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.Objects;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -42,7 +43,7 @@ import static org.junit.jupiter.api.Assertions.fail;
  */
 public abstract class CompareFixedToCommonOps_DDRM extends CompareFixed_DDRM {
 
-    public CompareFixedToCommonOps_DDRM(Class classFixed) {
+    protected CompareFixedToCommonOps_DDRM(Class classFixed) {
         super(classFixed, CommonOps_DDRM.class);
     }
 
@@ -70,7 +71,7 @@ public abstract class CompareFixedToCommonOps_DDRM extends CompareFixed_DDRM {
         for (int i = 0; i < methods.length; i++) {
             if( !methods[i].getName().equals("cholL"))
                 continue;
-            Class<?> parameters[] = methods[i].getParameterTypes();
+            Class<?>[] parameters = methods[i].getParameterTypes();
             DMatrixFixed _A = (DMatrixFixed)parameters[0].newInstance();
 
             ConvertDMatrixStruct.convert(A,_A);
@@ -97,7 +98,7 @@ public abstract class CompareFixedToCommonOps_DDRM extends CompareFixed_DDRM {
         for (int i = 0; i < methods.length; i++) {
             if( !methods[i].getName().equals("cholU"))
                 continue;
-            Class<?> parameters[] = methods[i].getParameterTypes();
+            Class<?>[] parameters = methods[i].getParameterTypes();
             DMatrixFixed _A = (DMatrixFixed)parameters[0].newInstance();
 
             ConvertDMatrixStruct.convert(A,_A);
@@ -125,6 +126,7 @@ public abstract class CompareFixedToCommonOps_DDRM extends CompareFixed_DDRM {
                 }
             }
         }
+        Objects.requireNonNull(match);
 
         double alpha = 1.5;
         double beta = -0.7;
@@ -135,7 +137,7 @@ public abstract class CompareFixedToCommonOps_DDRM extends CompareFixed_DDRM {
 
         DMatrixFixed _C;
         try {
-            Class<?> parameters[] = match.getParameterTypes();
+            Class<?>[] parameters = match.getParameterTypes();
             DMatrixFixed _A = (DMatrixFixed)parameters[1].newInstance();
             DMatrixFixed _u = (DMatrixFixed)parameters[3].newInstance();
             DMatrixFixed _v = (DMatrixFixed)parameters[4].newInstance();

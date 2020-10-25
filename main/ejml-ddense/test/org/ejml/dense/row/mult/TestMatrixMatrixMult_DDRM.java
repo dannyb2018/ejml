@@ -24,6 +24,7 @@ import org.ejml.data.DMatrixRMaj;
 import org.ejml.dense.row.CommonOps_DDRM;
 import org.ejml.dense.row.MatrixFeatures_DDRM;
 import org.ejml.dense.row.RandomMatrices_DDRM;
+import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.InvocationTargetException;
@@ -59,7 +60,7 @@ public class TestMatrixMatrixMult_DDRM {
      */
     @Test
     public void checkInputInstance() throws IllegalAccessException {
-        Method methods[] = MatrixMatrixMult_DDRM.class.getMethods();
+        Method[] methods = MatrixMatrixMult_DDRM.class.getMethods();
         for( Method method : methods ) {
             String name = method.getName();
 
@@ -96,7 +97,7 @@ public class TestMatrixMatrixMult_DDRM {
      */
     @Test
     public void checkAllAgainstKnown() throws InvocationTargetException, IllegalAccessException {
-        double d[] = new double[]{0,1,2,3,4,5,6,7,8,9,10,11,12};
+        double[] d = new double[]{0,1,2,3,4,5,6,7,8,9,10,11,12};
         DMatrixRMaj a_orig = new DMatrixRMaj(2,3, true, d);
         DMatrixRMaj b_orig = new DMatrixRMaj(3,4, true, d);
         DMatrixRMaj c_orig = RandomMatrices_DDRM.rectangle(2,4,rand);
@@ -111,9 +112,6 @@ public class TestMatrixMatrixMult_DDRM {
      *
      * The known case is needed since this test case tests against other algorithms in
      * this library, which could in theory be wrong.
-     *
-     * @throws InvocationTargetException
-     * @throws IllegalAccessException
      */
     @Test
     public void checkAgainstRandomDiffShapes() throws InvocationTargetException, IllegalAccessException {
@@ -148,7 +146,7 @@ public class TestMatrixMatrixMult_DDRM {
         double alpha = 2.5;
 
         int numChecked = 0;
-        Method methods[] = MatrixMatrixMult_DDRM.class.getMethods();
+        Method[] methods = MatrixMatrixMult_DDRM.class.getMethods();
 
         for( Method method : methods ) {
             String name = method.getName();
@@ -208,7 +206,7 @@ public class TestMatrixMatrixMult_DDRM {
         double alpha = 2.5;
 
         int numChecked = 0;
-        Method methods[] = MatrixMatrixMult_DDRM.class.getMethods();
+        Method[] methods = MatrixMatrixMult_DDRM.class.getMethods();
 
         for( Method method : methods ) {
             String name = method.getName();
@@ -254,21 +252,27 @@ public class TestMatrixMatrixMult_DDRM {
         a.set(b);
     }
 
-    public static void invoke(Method func,
-                              double alpha,
-                              DMatrixRMaj a, DMatrixRMaj b, DMatrixRMaj c)
+    public static @Nullable DMatrixRMaj invoke(Method func,
+                                               double alpha,
+                                               DMatrixRMaj a, DMatrixRMaj b, @Nullable DMatrixRMaj c)
             throws IllegalAccessException, InvocationTargetException {
+
+        Object ret;
         if( func.getParameterTypes().length == 3 ) {
-            func.invoke(null, a, b, c);
+            ret = func.invoke(null, a, b, c);
         } else {
             if( func.getParameterTypes()[0] == double.class ) {
                 if( func.getParameterTypes().length == 4 )
-                    func.invoke(null,alpha, a, b, c);
+                    ret = func.invoke(null,alpha, a, b, c);
                 else
-                    func.invoke(null,alpha, a, b, c,null);
+                    ret = func.invoke(null,alpha, a, b, c,null);
             } else {
-                func.invoke(null, a, b, c,null);
+                ret = func.invoke(null, a, b, c,null);
             }
         }
+
+        if( ret instanceof DMatrixRMaj )
+            return (DMatrixRMaj)ret;
+        return null;
     }
 }

@@ -19,6 +19,7 @@
 package org.ejml.dense.row.mult;
 
 import org.ejml.MatrixDimensionException;
+import org.ejml.UtilEjml;
 import org.ejml.data.DMatrixRMaj;
 
 import java.lang.reflect.InvocationTargetException;
@@ -34,7 +35,10 @@ import static org.junit.jupiter.api.Assertions.*;
  *
  * @author Peter Abeles
  */
+@SuppressWarnings("rawtypes")
 public class CheckMatrixMultShape_DDRM {
+
+    // TODO merge with CheckMatrixMultShape_DSCC - Need to mess with project dependencies to do that
 
     Class theClass;
 
@@ -44,13 +48,11 @@ public class CheckMatrixMultShape_DDRM {
 
     /**
      * Perform all shape input checks.
-     *
-     * @throws Throwable
      */
     public void checkAll()
     {
         int numChecked = 0;
-        Method methods[] = theClass.getMethods();
+        Method[] methods = theClass.getMethods();
 
         for( Method method : methods ) {
             String name = method.getName();
@@ -76,7 +78,7 @@ public class CheckMatrixMultShape_DDRM {
 
             try {
                 checkPositive(method, transA, transB);
-                checkNegative(method,transA,transB);
+                checkNegative(method, transA, transB);
             } catch( Throwable e ) {
                 System.out.println("Failed on "+name);
                 e.printStackTrace();
@@ -123,23 +125,39 @@ public class CheckMatrixMultShape_DDRM {
         }
 
         TestMatrixMatrixMult_DDRM.invoke(func, 2.0, A, B, C);
+
+        if( UtilEjml.hasNullableArgument(func) ) {
+            DMatrixRMaj ret = TestMatrixMatrixMult_DDRM.invoke(func, 2.0, A, B, null);
+            assertNotNull(ret);
+            assertEquals(ret.numRows,C.numRows);
+            assertEquals(ret.numCols,C.numCols);
+        }
     }
 
     /**
      * See if the function throws an exception when it is given bad inputs
      */
-    private void checkNegative(Method func, boolean transA, boolean transB) throws NoSuchMethodException, IllegalAccessException {
+    private void checkNegative(Method func, boolean transA, boolean transB) throws IllegalAccessException {
+
+        // don't reshape if it adds since C is also an input
+        boolean reshape = !func.getName().contains("Add");
 
 //        System.out.println("func = "+func);
         // correct = 2,4,4,3,2,3
         //           i,j,j,k,i,k
 
         // mis matched i
-        checkReshapeC(func,2,4,4,3,6,3,transA,transB);
+        if( reshape )
+            checkReshapeC(func,2,4,4,3,6,3,transA,transB);
+        else
+            checkNegative(func,2,4,5,3,2,3,transA,transB);
         // missmatched j
         checkNegative(func,2,4,5,3,2,3,transA,transB);
         // miss matched k
-        checkReshapeC(func,2,4,4,7,2,3,transA,transB);
+        if( reshape )
+            checkReshapeC(func,2,4,4,7,2,3,transA,transB);
+        else
+            checkNegative(func,2,4,4,7,2,3,transA,transB);
     }
 
     /**
@@ -166,7 +184,7 @@ public class CheckMatrixMultShape_DDRM {
             TestMatrixMatrixMult_DDRM.invoke(func, 2.0, A, B, C);
             fail("An exception should have been thrown.");
         } catch( InvocationTargetException e ) {
-            assertTrue(e.getCause().getClass() == MatrixDimensionException.class );
+            assertSame(e.getCause().getClass(), MatrixDimensionException.class);
         }
     }
 
@@ -198,4 +216,5 @@ public class CheckMatrixMultShape_DDRM {
             fail("there should be no exception!");
         }
     }
+
 }

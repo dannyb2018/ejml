@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009-2019, Peter Abeles. All Rights Reserved.
+ * Copyright (c) 2009-2020, Peter Abeles. All Rights Reserved.
  *
  * This file is part of Efficient Java Matrix Library (EJML).
  *
@@ -21,8 +21,7 @@ package org.ejml.ops;
 import org.ejml.UtilEjml;
 import org.ejml.data.DMatrix4;
 import org.ejml.data.DMatrixRMaj;
-
-import javax.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Converts 1D and 2D arrays to and from EJML data types
@@ -91,13 +90,13 @@ public class ConvertDArrays {
 //        return dst;
 //    }
 
-    public static DMatrix4 convert(double[][] src, DMatrix4 dst) {
+    public static DMatrix4 convert(double[][] src, @Nullable DMatrix4 dst) {
         if( dst == null )
             dst = new DMatrix4();
 
         if( src.length == 4 ) {
             if( src[0].length == 1 )
-                throw new IllegalArgumentException(("Expected a vector"));
+                throw new IllegalArgumentException("Expected a vector");
             dst.a1 = src[0][0];
             dst.a2 = src[1][0];
             dst.a3 = src[2][0];

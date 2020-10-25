@@ -29,6 +29,7 @@ import org.ejml.sparse.csc.MatrixFeatures_DSCC;
 import org.ejml.sparse.csc.RandomMatrices_DSCC;
 import org.ejml.sparse.triplet.MatrixFeatures_DSTL;
 import org.ejml.sparse.triplet.RandomMatrices_DSTL;
+import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.InvocationTargetException;
@@ -41,6 +42,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * @author Peter Abeles
  */
+@SuppressWarnings({"ClassNewInstance", "rawtypes"})
 public class TestConvertDMatrixStruct {
 
     Random rand = new Random(234);
@@ -102,7 +104,7 @@ public class TestConvertDMatrixStruct {
         for( Method m : methods ) {
             if( !m.getName().equals("convert") )
                 continue;
-            Class[]param = m.getParameterTypes();
+            Class[] param = m.getParameterTypes();
 
             if( !DMatrixFixed.class.isAssignableFrom(param[1]) ) {
                 continue;
@@ -168,30 +170,6 @@ public class TestConvertDMatrixStruct {
         }
     }
 
-    private void checkIdenticalV(DMatrix a , DMatrix b ) {
-        boolean columnVectorA = a.getNumRows() > a.getNumCols();
-        boolean columnVectorB = b.getNumRows() > b.getNumCols();
-
-        int length = Math.max(a.getNumRows(),b.getNumRows());
-
-        for( int i = 0; i < length; i++  ) {
-
-            double valueA,valueB;
-
-            if( columnVectorA )
-                valueA = a.get(i,0);
-            else
-                valueA = a.get(0,i);
-
-            if( columnVectorB )
-                valueB = b.get(i,0);
-            else
-                valueB = b.get(0,i);
-
-            assertEquals(valueA,valueB,UtilEjml.TEST_F64);
-        }
-    }
-
     @Test
     public void DMatrixRow_SMatrixTriplet() {
         DMatrixRMaj a = RandomMatrices_DDRM.rectangle(5,6,-1,1,rand);
@@ -205,7 +183,7 @@ public class TestConvertDMatrixStruct {
         DMatrixRow_SMatrixTriplet(a, new DMatrixSparseTriplet(1,1,2));
     }
 
-    public void DMatrixRow_SMatrixTriplet(DMatrixRMaj a , DMatrixSparseTriplet b ) {
+    public void DMatrixRow_SMatrixTriplet(DMatrixRMaj a , @Nullable DMatrixSparseTriplet b ) {
         b = ConvertDMatrixStruct.convert(a,b, UtilEjml.EPS);
 
         assertEquals(a.numRows, b.numRows);
@@ -216,7 +194,7 @@ public class TestConvertDMatrixStruct {
                 int index = b.nz_index(row,col);
 
                 if( a.get(row,col) == 0.0 ) {
-                    assertTrue( -1 == index );
+                    assertEquals(index, -1);
                 } else {
                     assertEquals( a.get(row,col), b.nz_value.data[index], UtilEjml.TEST_F64);
                 }
@@ -244,7 +222,7 @@ public class TestConvertDMatrixStruct {
         DMatrix_SMatrixTriplet(a, new DMatrixSparseTriplet(1,1,2));
     }
 
-    public void DMatrix_SMatrixTriplet(DMatrix a , DMatrixSparseTriplet b ) {
+    public void DMatrix_SMatrixTriplet(DMatrix a , @Nullable DMatrixSparseTriplet b ) {
         b = ConvertDMatrixStruct.convert(a,b, UtilEjml.EPS);
 
         assertEquals(a.getNumRows(), b.numRows);
@@ -255,7 +233,7 @@ public class TestConvertDMatrixStruct {
                 int index = b.nz_index(row,col);
 
                 if( a.get(row,col) == 0.0 ) {
-                    assertTrue( -1 == index );
+                    assertEquals(index, -1);
                 } else {
                     assertEquals( a.get(row,col), b.nz_value.data[index], UtilEjml.TEST_F64);
                 }
@@ -283,7 +261,7 @@ public class TestConvertDMatrixStruct {
         DMatrixRow_SparseCSC(a, new DMatrixSparseCSC(1,1,2));
     }
 
-    public void DMatrixRow_SparseCSC(DMatrixRMaj a , DMatrixSparseCSC b ) {
+    public void DMatrixRow_SparseCSC(DMatrixRMaj a , @Nullable DMatrixSparseCSC b ) {
         b = ConvertDMatrixStruct.convert(a,b, UtilEjml.EPS);
 
         assertEquals(a.numRows, b.numRows);
@@ -294,7 +272,7 @@ public class TestConvertDMatrixStruct {
                 int index = b.nz_index(row,col);
 
                 if( a.get(row,col) == 0.0 ) {
-                    assertTrue( -1 == index );
+                    assertEquals(index, -1);
                 } else {
                     assertEquals( a.get(row,col), b.nz_values[index], UtilEjml.TEST_F64);
                 }
@@ -317,7 +295,7 @@ public class TestConvertDMatrixStruct {
         SMatrixCC_DMatrixRow(a,new DMatrixRMaj(1,1));
     }
 
-    public void SMatrixCC_DMatrixRow(DMatrixSparseCSC a , DMatrixRMaj b ) {
+    public void SMatrixCC_DMatrixRow(DMatrixSparseCSC a , @Nullable DMatrixRMaj b ) {
         b = ConvertDMatrixStruct.convert(a,b);
 
         assertEquals(a.numRows, b.numRows);
@@ -345,7 +323,7 @@ public class TestConvertDMatrixStruct {
         SMatrixTriplet_SMatrixCC(a,new DMatrixSparseCSC(1,1,2));
     }
 
-    public void SMatrixTriplet_SMatrixCC(DMatrixSparseTriplet a , DMatrixSparseCSC b ) {
+    public void SMatrixTriplet_SMatrixCC(DMatrixSparseTriplet a , @Nullable DMatrixSparseCSC b ) {
         b = ConvertDMatrixStruct.convert(a,b);
 
         assertEquals(a.numRows, b.numRows);

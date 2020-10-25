@@ -4,4 +4,3 @@ jdk:
 install:
   - ./gradlew autogenerate
   - ./gradlew assemble
-script:

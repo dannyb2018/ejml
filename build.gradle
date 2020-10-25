@@ -1,25 +1,41 @@
-plugins {
-    id "com.peterabeles.gversion" version "1.7.0"
-}
+/*
+ * Copyright (c) 2020, Peter Abeles. All Rights Reserved.
+ *
+ * This file is part of Efficient Java Matrix Library (EJML).
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-gversion {
-    srcDir = "main/ejml-core/src"
-    classPackage = "org.ejml"
-    className = "EjmlVersion"
+import net.ltgt.gradle.errorprone.CheckSeverity
+
+plugins {
+    id "com.peterabeles.gversion" version "1.8.3" apply false
+    id "net.ltgt.errorprone" version "1.2.1" apply false
 }
 
 allprojects {
-    apply plugin: 'idea'
     apply plugin: 'eclipse'
+    apply plugin: 'com.peterabeles.gversion'
 
     group = 'org.ejml'
-    version = '0.39'
+    version = '0.40-SNAPSHOT'
 }
 
 subprojects {
     apply plugin: 'java'
     apply plugin: 'maven'
     apply plugin: 'signing'
+    apply plugin: 'net.ltgt.errorprone'
 
     java {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -35,8 +51,9 @@ subprojects {
     }
 
     test {
-        ignoreFailures true
+        useJUnitPlatform()
         reports.html.enabled = false
+        testLogging.showStandardStreams = true // Useful for debugging on Travis and there should be no stdout spam
     }
 
     repositories {
@@ -55,48 +72,62 @@ subprojects {
 
         generate {
             java { srcDir 'generate' }
-            compileClasspath += sourceSets.main.runtimeClasspath
         }
 
-        benchmark {
+        benchmarks {
             java { srcDir 'benchmarks/src' }
-            resources { srcDir 'benchmark/resources' }
-            compileClasspath += sourceSets.main.runtimeClasspath
+            resources { srcDir 'benchmarks/resources' }
         }
 
         test {
             java {
                 srcDir 'test'
-                srcDir 'benchmarks/test'
             }
-            resources {
-                srcDir 'resources/test'
-            }
-            compileClasspath += sourceSets.benchmark.runtimeClasspath
+            resources { srcDir 'resources/test' }
         }
     }
 
     dependencies {
-        compile 'com.google.code.findbugs:jsr305:3.0.2' // @Nullable
+        compileOnly 'org.projectlombok:lombok:1.18.10'
+        compileOnly 'org.jetbrains:annotations:20.0.0' // @Nullable
+        compileOnly 'javax.annotation:jsr250-api:1.0'  // @Generated
+        testCompileOnly project.sourceSets.main.compileClasspath
 
         testImplementation( 'org.junit.jupiter:junit-jupiter-api:5.4.0' )
+        testImplementation( 'org.junit.jupiter:junit-jupiter-params:5.4.0' )
         testRuntimeOnly( 'org.junit.jupiter:junit-jupiter-engine:5.4.0' )
 
-        ['core','generator-annprocess'].each { String a->
-            benchmarkCompile('org.openjdk.jmh:jmh-'+a+':1.19')
-        }
         generateCompile project(':main:autocode')
 
         // needed to use Java 11+ syntax with Java 1.8 byte code
-        annotationProcessor('com.github.bsideup.jabel:jabel-javac-plugin:0.2.0'){
+        annotationProcessor('com.github.bsideup.jabel:jabel-javac-plugin:0.2.0') {
             exclude group: 'net.bytebuddy', module: 'byte-buddy'
             exclude group: 'net.bytebuddy', module: 'byte-buddy-agent'
         }
+
+        annotationProcessor 'org.projectlombok:lombok:1.18.10'  // @Getter @Setter
         annotationProcessor("net.bytebuddy:byte-buddy:1.10.10")
         annotationProcessor("net.bytebuddy:byte-buddy-agent:1.10.10")
+
+        errorprone "com.google.errorprone:error_prone_core:2.4.0"   // adds benchmarks/generated to sourceSet
+        errorproneJavac "com.google.errorprone:javac:9+181-r4173-1" // annoying...
+
+        benchmarksImplementation project.sourceSets.main.runtimeClasspath
+        benchmarksImplementation project.sourceSets.main.compileClasspath
+        ['1.19'].each { String a->// don't upgrade to 1.21! much slower
+            benchmarksCompile('org.openjdk.jmh:jmh-core:'+a)
+            benchmarksAnnotationProcessor 'org.openjdk.jmh:jmh-generator-annprocess:'+a
+        }
+
+        // even if it's not used you still need to include the dependency
+        annotationProcessor "com.uber.nullaway:nullaway:0.8.0"
+        testAnnotationProcessor "com.uber.nullaway:nullaway:0.8.0"
+        benchmarksAnnotationProcessor "com.uber.nullaway:nullaway:0.8.0"
+        generateAnnotationProcessor "com.uber.nullaway:nullaway:0.8.0"
     }
 
     javadoc.failOnError = false
+    javadoc.enabled = !project.version.contains("SNAPSHOT") // disable to stop it from spamming stdout
     task javadocJar(type: Jar) {
         classifier = 'javadoc'
         from javadoc
@@ -105,6 +136,36 @@ subprojects {
     task sourcesJar(type: Jar) {
         classifier = 'sources'
         from sourceSets.main.allSource
+    }
+
+    // InconsistentCapitalization is disabled because in Math capital letters are often used for matrices and lower case
+    // for vectors or scalars. Perhaps a more verbose name should be used but it's disabled for now to reduce build spam
+    tasks.withType(JavaCompile).configureEach {
+        options.errorprone.enabled = false
+        if( path.contains("benchmarks") )
+            return
+        if( path.contains("example") )
+            return
+
+        options.errorprone.enabled = true
+        options.errorprone.disableWarningsInGeneratedCode = true
+        options.errorprone.disable("TypeParameterUnusedInFormals","StringSplitter","InconsistentCapitalization",
+                "HidingField", // this is sometimes done when the specific type is known by child. Clean up later.
+                "ClassNewInstance", // yes it's deprecated, but new version is more verbose with ignored errors
+                "FloatingPointLiteralPrecision", // too many false positives in test code
+                "MissingSummary","UnescapedEntity","EmptyBlockTag")
+        options.errorprone.error("MissingOverride","MissingCasesInEnumSwitch","BadInstanceof",
+                "PublicConstructorForAbstractClass","EmptyCatch","NarrowingCompoundAssignment","JdkObsolete")
+
+        if( name.startsWith("compileTest") ) {
+            options.errorprone.disable("ReferenceEquality","IntLongMath","ClassCanBeStatic")
+        }
+
+        options.errorprone {
+            check("NullAway", CheckSeverity.ERROR)
+            option("NullAway:TreatGeneratedAsUnannotated", true)
+            option("NullAway:AnnotatedPackages", "org.ejml")
+        }
     }
 
     artifacts {
@@ -182,24 +243,6 @@ def allModules = [
         ':main:ejml-experimental',
 ]
 
-/*
- * Copyright (c) 2009-2020, Peter Abeles. All Rights Reserved.
- *
- * This file is part of Efficient Java Matrix Library (EJML).
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 // Creates a directory with all the comiled jars
 task createLibraryDirectory( dependsOn: allModules.collect{ it+":jar"}+allModules.collect{ it+":sourcesJar"}) {
 
@@ -254,17 +297,17 @@ task alljavadoc(type: Javadoc) {
 }
 
 task oneJarBin(type: Jar, dependsOn: javadocProjects.collect { it + ":compileJava" }) {
-    baseName = 'EJML'
+    archiveFile.set(file("ejml-v${project.version}.jar"))
 
-    from files(javadocProjects.collect { project(it).sourceSets.main.output })
+    from files(javadocProjects.collect { project(it).sourceSets.main.output.classesDirs }) {
+        exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA'
+    }
 }
 
 wrapper {
     distributionType = Wrapper.DistributionType.BIN
     gradleVersion = '6.4.1'
 }
-
-project(':main:ejml-core').compileJava.dependsOn(createVersionFile)
 
 // Disable the creation of jars for distribution.  If you don't do this it will crash
 [':main',':examples',':main:autocode'].each {String a ->

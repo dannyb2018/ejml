@@ -55,10 +55,7 @@ public class GenerateFixedFeatures extends GenerateFixed {
                 "\n" +
                 "/**\n" +
                 " * <p>Matrix features for fixed sized matrices which are "+dimen+" x "+dimen+" or "+dimen+" element vectors.</p>\n" +
-                " * <p>DO NOT MODIFY.  Automatically generated code created by "+getClass().getSimpleName()+"</p>\n" +
-                " *\n" +
-                " * @author Peter Abeles\n" +
-                " */\n" +
+                standardClassDocClosing("Peter Abeles") +
                 "public class "+className+" {\n");
     }
 
@@ -94,13 +91,13 @@ public class GenerateFixedFeatures extends GenerateFixed {
         out.print("    public static boolean hasUncountable("+nameMatrix+" a ) {\n");
 
         for( int y = 1; y <= dimen; y++ ) {
-            String row = "";
+            StringBuilder row = new StringBuilder();
 
             for( int x = 1; x <= dimen; x++ ) {
                 String n = y+""+x;
                 if( x > 1 )
-                    row += "+ ";
-                row += "a.a"+n;
+                    row.append("+ ");
+                row.append("a.a").append(n);
             }
             out.print("        if( UtilEjml.isUncountable("+row+"))\n"+
                     "            return true;\n");
